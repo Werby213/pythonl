@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/PycharmProjects.iml" filepath="$PROJECT_DIR$/.idea/PycharmProjects.iml" />
+      <module fileurl="file://D:/User/Downloads/Tkinter-Designer-master/.idea/Tkinter-Designer-master.iml" filepath="D:/User/Downloads/Tkinter-Designer-master/.idea/Tkinter-Designer-master.iml" />
     </modules>
   </component>
 </project>

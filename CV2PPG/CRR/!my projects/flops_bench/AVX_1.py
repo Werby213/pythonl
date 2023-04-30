@@ -1,13 +1,13 @@
 import timeit
 import numpy as np
 
-
+# Операции для расчета производительности
+a = np.ones(256, dtype=np.float32)
+b = np.ones(256, dtype=np.float32) * 2
+c = np.ones(256, dtype=np.float32) * 3
+d = np.ones(256, dtype=np.float32) * 4
 def benchmark_flops_avx():
-    # Операции для расчета производительности
-    a = np.ones(256, dtype=np.float32)
-    b = np.ones(256, dtype=np.float32) * 2
-    c = np.ones(256, dtype=np.float32) * 3
-    d = np.ones(256, dtype=np.float32) * 4
+
 
     # Запускаем тест на 1 миллион итераций
     iterations = 1000000

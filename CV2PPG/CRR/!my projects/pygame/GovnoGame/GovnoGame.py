@@ -6,18 +6,30 @@ import time
 from pygame.locals import QUIT
 score_count = 0
 hp = 100
-wave = 1
+
 wave_elapsed = time.localtime()
+
 
 meteors = ['meteor1.png', 'meteor2.png', 'meteor3.png', 'meteor4.png', 'meteor5.png']
 
 
+class Wave:
+    def __init__(self):
+        self.wave = 1
+        self.enemy_spawn_chance = 15
+
+    def update_wave(self):
+        self.enemy_spawn_chance -= 1
+        self.wave += 1
+
+    def get_spawn_chance(self):
+        return self.enemy_spawn_chance
 class UI_shop(tk.Tk):
     def __init__(self):
         super().__init__()
         self.geometry("500x500+100+100")
         self.title("Shop")
-        self.count1 = tk.Label(self, textvariable='123123')
+        self.count1 = tk.Label(self, textvariable="123123")
         self.count1.place(x=10, y=10)
 
     def run(self):
@@ -106,22 +118,36 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = (resolution[0] / 2, resolution[1])
         self.speed = pygame.math.Vector2(0, 0)
-        self.acceleration = pygame.math.Vector2(0, 2)
 
     def update(self):
-        self.speed += self.acceleration
         self.rect.move_ip(self.speed)
         if self.speed == 0:
             self.image = pygame.image.load('player_fall.png')
 
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_w]:
+            self.speed.y = -10
+        elif keys[pygame.K_s]:
+            self.speed.y = 10
+        else:
+            self.speed.y = 0
+
+        if keys[pygame.K_a]:
+            self.speed.x = -10
+        elif keys[pygame.K_d]:
+            self.speed.x = 10
+        else:
+            self.speed.x = 0
+
+
         # проверка на выход за пределы экрана
         if self.rect.bottom > resolution[1]:
             self.rect.bottom = resolution[1]
-            self.speed.y = 0
+            self.speed.y = -1
         if self.rect.right > resolution[0]:
-            self.speed.x = 0
+            self.speed.x = -1
         if self.rect.left <= 0:
-            self.speed.x = 0
+            self.speed.x = 1
         if event.type == pygame.KEYUP and event.key == pygame.K_d:
             self.speed.x = 0
         if event.type == pygame.KEYUP and event.key == pygame.K_a:
@@ -130,16 +156,37 @@ class Player(pygame.sprite.Sprite):
     def shoot(self):
         Bullet.shoot(self)
 
-
     def pleft(self):
         if self.rect.bottom == resolution[1]:
-            self.speed.x = -10
-            #self.image = pygame.image.load('player_left.png')
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_a]:
+                self.speed.x = -10
+            else:
+                self.speed.x = 0
 
     def pright(self):
         if self.rect.bottom == resolution[1]:
-            self.speed.x = 10
-            #self.image = pygame.image.load('player_right.png')
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_d]:
+                self.speed.x = 10
+            else:
+                self.speed.x = 0
+
+    def ptop(self):
+        if self.rect.bottom == resolution[1]:
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_w]:
+                self.speed.y = -10
+            else:
+                self.speed.y = 0
+
+    def pdown(self):
+        if self.rect.bottom == resolution[1]:
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_s]:
+                self.speed.y = 10
+            else:
+                self.speed.y = 0
 
     def score(self):
         global score_count
@@ -183,16 +230,18 @@ bullets = pygame.sprite.Group()
 player = Player()
 enemy = Enemy()
 shop = UI_shop()
+wave = Wave()
 all_sprites.add(player)
 background = pygame.image.load('background.jpg')
 background = pygame.transform.scale(background, (resolution[0], 1280))
-x=0
+y=0
 bg_width = background.get_rect().width
 while running:
     clock.tick(FPS)
-    rel_x = x % bg_width
+    rel_x = y % bg_width
     DISPLAYSURF.blit(background, (rel_x - bg_width, 0))
-    x -= 1
+    y -= 1
+
     if rel_x < resolution[0]:
         DISPLAYSURF.blit(background, (rel_x , 0))
     for event in pygame.event.get():
@@ -208,15 +257,17 @@ while running:
             player.pright()
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_a:
             player.pleft()
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_s:
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_w:
+            player.ptop()
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
+            player.pdown()
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_h:
             shop.run()
-        if random.randint(1, 15) == 15:
+        if random.randint(1, wave.get_spawn_chance()) == 1:
             e = Enemy()
             all_sprites.add(e)
             enemies.add(e)
 
-    all_sprites.update()
-    pygame.display.update()
     hit = pygame.sprite.spritecollide(player, enemies, False, pygame.sprite.collide_circle)
     if hit:
         hp = hp - 1
@@ -230,6 +281,8 @@ while running:
 
     f1 = pygame.font.Font(None, 50)
     text1 = f1.render('Счет: ' + str(score_count)+ '    HP: '+ str(hp) + '       Волна: '+ str(wave) + '  Конец волны:', 1, (180, 0, 0))
+    all_sprites.update()
+    #pygame.display.update()
     DISPLAYSURF.blit(text1, (10, 50))
     all_sprites.draw(DISPLAYSURF)
     pygame.display.flip()
