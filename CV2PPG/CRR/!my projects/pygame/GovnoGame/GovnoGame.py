@@ -6,8 +6,8 @@ import time
 from pygame.locals import QUIT
 score_count = 0
 hp = 100
-
-wave_elapsed = time.localtime()
+hit_count = 0
+wave_elapsed = 0
 
 
 meteors = ['meteor1.png', 'meteor2.png', 'meteor3.png', 'meteor4.png', 'meteor5.png']
@@ -16,14 +16,16 @@ meteors = ['meteor1.png', 'meteor2.png', 'meteor3.png', 'meteor4.png', 'meteor5.
 class Wave:
     def __init__(self):
         self.wave = 1
-        self.enemy_spawn_chance = 15
+        self.base_enemy_spawn_chance = 15
+        self.enemy_spawn_chance = self.base_enemy_spawn_chance
 
     def update_wave(self):
-        self.enemy_spawn_chance -= 1
+        self.enemy_spawn_chance = max(1, self.base_enemy_spawn_chance - self.wave)
         self.wave += 1
 
     def get_spawn_chance(self):
         return self.enemy_spawn_chance
+
 class UI_shop(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -90,6 +92,8 @@ class Enemy(pygame.sprite.Sprite):
 
 
 class Bullet(pygame.sprite.Sprite):
+    bullet_loss = 0  # создаем переменную класса
+
     def __init__(self, pos):
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.Surface((50, 50))
@@ -103,9 +107,23 @@ class Bullet(pygame.sprite.Sprite):
         self.rect.y -= 40
         if self.rect.top < 0:
             self.kill()
+            Bullet.bullet_loss += 1  # увеличиваем значение переменной класса
 
-    def getpos(self):
-        self.getpos = self.rect.x, self.rect.y
+    @classmethod
+    def get_bullet_loss(cls):
+        return cls.bullet_loss
+
+    @classmethod
+    def get_accuracy(cls):
+        acc = 0  # initialize acc with a default value
+        if score_count != 0:
+            acc = 100 - (cls.bullet_loss / hit_count * 100)
+            if acc < 0:
+                acc = 0
+        else:
+            return 0
+        return round(acc)
+
 
 
 class Player(pygame.sprite.Sprite):
@@ -230,7 +248,7 @@ bullets = pygame.sprite.Group()
 player = Player()
 enemy = Enemy()
 shop = UI_shop()
-wave = Wave()
+#wave = Wave()
 all_sprites.add(player)
 background = pygame.image.load('background.jpg')
 background = pygame.transform.scale(background, (resolution[0], 1280))
@@ -263,7 +281,7 @@ while running:
             player.pdown()
         if event.type == pygame.KEYDOWN and event.key == pygame.K_h:
             shop.run()
-        if random.randint(1, wave.get_spawn_chance()) == 1:
+        if random.randint(1, 15) == 1:
             e = Enemy()
             all_sprites.add(e)
             enemies.add(e)
@@ -275,14 +293,20 @@ while running:
     bullet_hit = pygame.sprite.groupcollide(bullets, enemies, True, True, pygame.sprite.collide_circle)
     if bullet_hit:
         score_count +=1
+        hit_count += 1
     if hp == 0:
         print("Game Over")
         running = False
 
     f1 = pygame.font.Font(None, 50)
-    text1 = f1.render('Счет: ' + str(score_count)+ '    HP: '+ str(hp) + '       Волна: '+ str(wave) + '  Конец волны:', 1, (180, 0, 0))
+    text1 = f1.render(
+        'Счет: ' + str(score_count) + '    HP: ' + str(hp) + '       Волна: ' + str(0) + '  Конец волны:\n', 1,
+        (180, 0, 0))
+    text2 = f1.render('Промахи: ' + str(Bullet.get_bullet_loss()) + '     Точность: ' + str(Bullet.get_accuracy())+'%', 1, (180, 0, 0))
+
     all_sprites.update()
     #pygame.display.update()
     DISPLAYSURF.blit(text1, (10, 50))
+    DISPLAYSURF.blit(text2, (10, 100))
     all_sprites.draw(DISPLAYSURF)
     pygame.display.flip()
