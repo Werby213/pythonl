@@ -156,6 +156,30 @@ class AsteroidSprites():
     def get_asteroid_sprites_list(self):
         return self.sprites
 
+class Explosion(pygame.sprite.Sprite):
+    def __init__(self, center):
+        super().__init__()
+        self.image_list = []
+        for i in range(1, 6):
+            img = pygame.image.load(f'explosion_{i}.png').convert_alpha()
+            img = pygame.transform.scale(img, (50, 50))
+            self.image_list.append(img)
+
+        self.index = 0
+        self.image = self.image_list[self.index]
+        self.rect = self.image.get_rect(center=center)
+        self.time = pygame.time.get_ticks()
+
+    def update(self):
+        now = pygame.time.get_ticks()
+        if now - self.time > 50:
+            self.time = now
+            self.index += 1
+            if self.index >= len(self.image_list):
+                self.kill()
+            else:
+                self.image = self.image_list[self.index]
+                self.rect = self.image.get_rect(center=self.rect.center)
 
 class Asteroid(pygame.sprite.Sprite):
     enemies_on_screen = 0
