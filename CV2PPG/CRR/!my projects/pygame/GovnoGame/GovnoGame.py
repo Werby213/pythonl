@@ -4,12 +4,13 @@ import random
 import tkinter as tk
 import time
 from pygame.locals import QUIT
-from tqdm import tqdm
+import multiprocessing as mp
 score_count = 0
+score_wave = 0
 hp = 100
 hit_count = 0
 wave_elapsed = 0
-
+now = 0
 
 
 #class settings():
@@ -21,16 +22,17 @@ wave_elapsed = 0
 class Wave:
     def __init__(self):
         self.wave = 1
-        self.base_enemy_spawn_chance = 20
-        self.enemy_spawn_chance = self.base_enemy_spawn_chance
+        self.base_asteroid_spawn_chance = 20
+        self.asteroid_spawn_chance = self.base_asteroid_spawn_chance
         self.wave_time = 60
 
     def update_wave(self):
-        self.enemy_spawn_chance = max(1, self.base_enemy_spawn_chance - self.wave)
+        self.asteroid_spawn_chance = max(1, self.base_asteroid_spawn_chance - self.wave)
         self.wave += 1
+        self.wave_time -=1
 
     def get_spawn_chance(self):
-        return self.enemy_spawn_chance
+        return self.asteroid_spawn_chance
     def get_wave_number(self):
         return self.wave
     def get_wave_time(self):
@@ -79,6 +81,22 @@ class UI_shop(tk.Tk):
     def stop(self):
         self.quit()
 
+class Space_Dust_Sprites():
+    def __init__(self):
+        # Загрузка изображения, содержащего спрайты
+        sprite_sheet = pygame.image.load('asteroids.png')
+        # Размеры каждого спрайта
+        sprite_width = sprite_sheet.get_width() // 8
+        sprite_height = sprite_sheet.get_height() // 8
+
+        # Создание списка поверхностей для каждого спрайта
+        self.sprites = [
+            sprite_sheet.subsurface(pygame.Rect(x * sprite_width, y * sprite_height, sprite_width, sprite_height))
+            for y in range(8) for x in range(8)]
+        print("space dust sprites generated")
+
+    def get_space_dust_sprites_list(self):
+        return self.sprites
 class Space_Dust(pygame.sprite.Sprite):
     enteties_on_screen = 0
     damage = 0
@@ -122,7 +140,7 @@ class Space_Dust(pygame.sprite.Sprite):
         self.rect.y += self.speedy
         if self.rect.left > resolution[0] or self.rect.left > resolution[1] or self.rect.right < 0:
             self.kill()
-            enemy.enteties_on_screen -= 1
+            asteroid.enteties_on_screen -= 1
 
     def rotate(self):
         now = pygame.time.get_ticks()
@@ -159,15 +177,18 @@ class AsteroidSprites():
 class Explosion(pygame.sprite.Sprite):
     def __init__(self, center):
         super().__init__()
+        print(center)
         self.image_list = []
-        for i in range(1, 6):
-            img = pygame.image.load(f'explosion_{i}.png').convert_alpha()
+        for i in range(1, 9):
+            img = pygame.image.load(f'explosion/explosion_small{i}.bmp').convert_alpha()
             img = pygame.transform.scale(img, (50, 50))
             self.image_list.append(img)
 
         self.index = 0
         self.image = self.image_list[self.index]
         self.rect = self.image.get_rect(center=center)
+        #self.rect.center = center
+
         self.time = pygame.time.get_ticks()
 
     def update(self):
@@ -179,7 +200,7 @@ class Explosion(pygame.sprite.Sprite):
                 self.kill()
             else:
                 self.image = self.image_list[self.index]
-                self.rect = self.image.get_rect(center=self.rect.center)
+
 
 class Asteroid(pygame.sprite.Sprite):
     enemies_on_screen = 0
@@ -191,8 +212,6 @@ class Asteroid(pygame.sprite.Sprite):
 
     def __init__(self):
         super().__init__()
-
-        # Инициализация остальных атрибутов класса
         self.image_temp = random.choice(self.asteroid_sprites).copy()
         self.rect = self.image_temp.get_rect()
         self.radius = int(self.rect.width * .85 / 2)
@@ -225,6 +244,8 @@ class Asteroid(pygame.sprite.Sprite):
 
     def get_damage(self):
         return self.damage
+    def get_pos(self):
+        return self.rect.center
 
 
 class Bullet(pygame.sprite.Sprite):
@@ -353,13 +374,10 @@ class Player(pygame.sprite.Sprite):
         self.debug_mode = not self.debug_mode
 
 
-
-
-
 pygame.init()
 pygame.mixer.init()
 
-resolution = (1280, 1280)
+resolution = (1280, 1000)
 FPS = 60
 COLOR = {
     "Black": (0, 0, 0),
@@ -390,9 +408,10 @@ all_sprites = pygame.sprite.Group()
 enemies = pygame.sprite.Group()
 bullets = pygame.sprite.Group()
 player = Player()
-enemy = Asteroid()
+asteroid = Asteroid()
 shop = UI_shop()
 stats = Stats()
+wave = Wave()
 all_sprites.add(player)
 background = pygame.image.load('background.jpg')
 background = pygame.transform.scale(background, (resolution[0], 1280))
@@ -400,8 +419,8 @@ background = pygame.transform.rotate(background, 90)
 x = 0
 bg_height = background.get_rect().height
 while running:
-    wave = Wave()
     clock.tick(FPS)
+    now = pygame.time.get_ticks()
     rel_y = x % bg_height
     DISPLAYSURF.blit(background, (0, rel_y - bg_height))
     x += 1
@@ -436,24 +455,28 @@ while running:
             e = Asteroid()
             all_sprites.add(e)
             enemies.add(e)
-            enemy.enemies_on_screen +=1
-
+            Asteroid.enemies_on_screen +=1
     hit = pygame.sprite.spritecollide(player, enemies, True, pygame.sprite.collide_circle)
     if hit:
-        hp = hp - enemy.get_damage()
+        hp = hp - asteroid.get_damage()
         score_count += 1
 
     bullet_hit = pygame.sprite.groupcollide(bullets, enemies, True, True, pygame.sprite.collide_circle)
     if bullet_hit:
         score_count +=1
+        score_wave +=1
         hit_count += 1
-        enemy.enemies_on_screen -= 1
+        Asteroid.enemies_on_screen -= 1
+        Explosion(center=e.get_pos())
+        if score_wave >= 10:
+            wave.update_wave()
+            score_wave = 0
     if hp <= 0:
         print("Game Over")
         running = False
 
     f1 = pygame.font.Font("font.ttf", 35)
-    f2 = pygame.font.Font(None, 30)
+    f2 = pygame.font.Font(None, 25  )
     text1 = f1.render(
         'Score: ' + str(score_count) + '       HP: ' + str(hp) + '       Wave: ' + str(wave.get_wave_number()) + '       Wave end: ' , 1,
         (180, 180, 180))
@@ -463,10 +486,13 @@ while running:
 
     if player.debug_mode:
         debug = f2.render('spawn chance: ' + str(wave.get_spawn_chance()) +
-                          '     Enemies: '+ str(enemy.get_enemies_on_screen()) +
+                          '     Enemies: '+ str(asteroid.get_enemies_on_screen()) +
                           '     P_speed: ' + str(stats.get_player_speed()) +
                           '     P_bullet_s: ' + str(stats.get_player_bullet_speed()) +
-                          '     P_reload_s: ' + str(stats.get_player_reload_speed()),
+                          '     P_reload_s: ' + str(stats.get_player_reload_speed()) +
+                          '     Wave_time: ' + str(wave.wave_time) +
+                          '     FPS: ' + (str(round(clock.get_fps()))) +
+                          '     score_wave: ' + (str(score_wave)),
                           1, (180, 0, 0))
         for sprite in all_sprites:
             pygame.draw.rect(DISPLAYSURF, (0, 255, 0), sprite.rect, 1)
