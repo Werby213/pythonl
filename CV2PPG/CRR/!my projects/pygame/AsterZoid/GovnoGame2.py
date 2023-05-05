@@ -107,7 +107,7 @@ COLOR = {
 }
 
 DISPLAYSURF = pygame.display.set_mode((resolution))
-pygame.display.set_caption("GovnoGame")
+pygame.display.set_caption("AsterZoid")
 clock = pygame.time.Clock()
 running = True
 all_sprites = pygame.sprite.Group()

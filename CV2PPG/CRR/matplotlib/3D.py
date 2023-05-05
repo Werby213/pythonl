@@ -20,9 +20,11 @@ end = np.arctan(np.linalg.norm([X-1, Y-1], axis=0))
 def animate(i):
     # Вычисляем значение функции для текущего шага
     t = i / 100
+    d = i * 50
+    h = i * 100
     X = (1 - t) * start + t * end
-    Y = (1 - t) * start + t * end
-    Z = (1 - t) * start + t * end
+    Y = (1 - d) * start + t * end
+    Z = (1 - h) * start + t * end
 
 
 
