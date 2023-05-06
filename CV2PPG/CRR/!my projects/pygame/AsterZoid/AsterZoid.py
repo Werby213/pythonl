@@ -21,7 +21,7 @@ wave_elapsed = 0
 class Wave:
     def __init__(self):
         self.wave = 1
-        self.base_asteroid_spawn_chance = 20
+        self.base_asteroid_spawn_chance = 7
         self.asteroid_spawn_chance = self.base_asteroid_spawn_chance
         self.wave_time = 60
 
@@ -107,48 +107,38 @@ class Space_Dust_Sprites():
         return self.sprites
 
 
-class Space_dust(pygame.sprite.Sprite):
-    space_dust_on_screen = 0
+class Space_dust(pygame.sprite.DirtySprite):
+    space_dust_count = 0
     asteroid_sprites = Space_Dust_Sprites().get_space_dust_sprites_list()
-
-    @classmethod
-    def get_count_spacedust_on_screen(cls):
-        return cls.space_dust_on_screen
 
     def __init__(self, center):
         super().__init__()
-        Space_dust.space_dust_on_screen +=1
-        self.image_temp = random.choice(self.asteroid_sprites).copy()
+        self.dirty = 8
+        self.space_dust_count +=1
+        self.image_temp = random.choice(self.asteroid_sprites)
         self.rect = self.image_temp.get_rect()
-        self.radius = int(self.rect.width * .75 / 3)
-        size = random.randint(self.rect.width - 70, self.rect.height - 70)
+        self.radius = int(self.rect.width * .75 / 2)
+        size = random.randrange(5, 50)
         self.image = pygame.transform.scale(self.image_temp, (size, size))
         self.image_original = self.image.copy()
-        self.rect.x, self.rect.y  = center
-        self.speedx = random.randrange(-6, 6)
-        self.speedy = random.randrange(-6, 8)
-        self.rot_speed = random.randint(-6, 6)
+        self.rect.center = center
+        self.rect.x += 50
+        self.rect.y += 50
+        self.speedx = random.randrange(-20, 20)
+        self.speedy = random.randrange(-25, 6)
+        self.rot_speed = random.randrange(-6, 6)
         self.last_update = pygame.time.get_ticks()
         self.rot = 0
 
     def update(self):
-        self.rotate()
         self.rect.move_ip(self.speedx, self.speedy)
-        if self.rect.left > resolution[0] or self.rect.left > resolution[1] or self.rect.right < 0:
+        if self.rect.top > resolution[1] or self.rect.bottom < 0 or self.rect.right < 0 or self.rect.left > resolution[0]:
+
             self.kill()
-            Space_dust.space_dust_on_screen -= 1
+            Space_dust.space_dust_count -= 1
 
-    def rotate(self):
-        now = pygame.time.get_ticks()
-        if now - self.last_update > 1:
-            self.last_update = now
-            self.rot = (self.rot + self.rot_speed) % 360
-            self.image = pygame.transform.rotate(self.image_original, self.rot)
-            self.rect = self.image.get_rect(center=self.rect.center)
-
-
-    def get_pos(self):
-        return self.rect.center
+    def get_space_dust_count(self):
+        return self.space_dust_count
 
 class AsteroidSprites():
     def __init__(self):
@@ -174,7 +164,7 @@ class Explosion(pygame.sprite.Sprite):
     def load_small_exlosions_sprites(cls):
         for i in range(1, 12):
             img = pygame.image.load(f"explosion_big/explosion_big{i}-removebg-preview.png")
-            img = pygame.transform.scale(img, (200, 200))
+            img = pygame.transform.scale(img, (250, 250))
             cls.IMAGES.append(img)
 
     def __init__(self, center):
@@ -182,10 +172,10 @@ class Explosion(pygame.sprite.Sprite):
         self.image = self.IMAGES[0]
         self.rect = self.image.get_rect()
         self.rect.center = center
+        self.image = pygame.transform.scale(self.image, (random.randrange(10,50), random.randrange(10,50)))
         self.frame_index = 0
         self.last_update = pygame.time.get_ticks()
         self.frame_rate = 30
-        space_dust.draw(DISPLAYSURF)
 
     def update(self):
         now = pygame.time.get_ticks()
@@ -199,42 +189,43 @@ class Explosion(pygame.sprite.Sprite):
                 self.image = self.IMAGES[self.frame_index]
                 self.rect = self.image.get_rect()
                 self.rect.center = center
-                self.rect.x = self.rect.x + -(e.get_speed_x())
-                self.rect.y = self.rect.y + -(e.get_speed_y()) + 15
+                self.rect.x = self.rect.x + -(e.get_info()["speed_x"])
+                self.rect.y = self.rect.y + -(e.get_info()["speed_y"]) + 15
 
 
 
-class Asteroid(pygame.sprite.Sprite):
-    enemies_on_screen = 0
-    damage = random.randrange(10,25)
+class Asteroid(pygame.sprite.DirtySprite):
+    enemies_count = 0
     asteroid_sprites = AsteroidSprites().get_asteroid_sprites_list()
+    MIN_DAMAGE = 10
+    MAX_DAMAGE = 25
 
     @classmethod
-    def get_enemies_on_screen(cls):
-        return cls.enemies_on_screen
+    def get_enemies_count(cls):
+        return cls.enemies_count
 
     def __init__(self):
         super().__init__()
+        self.dirty = 4
         self.image_temp = random.choice(self.asteroid_sprites).copy()
         self.rect = self.image_temp.get_rect()
-        self.radius = int(self.rect.width * .85 / 2)
-        self.size = random.randrange(self.rect.width - 10, self.rect.height + 100)
+        self.radius = int(self.rect.width * 0.85 / 2)
+        self.size = random.randrange(100, 200)
         self.image = pygame.transform.scale(self.image_temp, (self.size, self.size))
         self.image_original = self.image.copy()
         self.rect.x = random.randrange(-100, 1000)
         self.rect.y = -100
-        self.speedx = random.randrange(-3, 3)
-        self.speedy = random.randrange(1, 10)
+        self.speed_x = random.randrange(-3, 3)
+        self.speed_y = random.randrange(1, 10)
         self.rot_speed = random.randrange(-3, 3)
         self.last_update = pygame.time.get_ticks()
         self.rot = 0
-        self.damage = random.randrange(10, 25)
+        self.damage = random.randint(self.MIN_DAMAGE, self.MAX_DAMAGE)
 
     def update(self):
         self.rotate()
-        self.rect.move_ip(self.speedx, self.speedy)
-        if self.rect.left > resolution[0] or self.rect.left > resolution[1] or self.rect.right < 0:
-            Asteroid.enemies_on_screen -= 1
+        self.rect.move_ip(self.speed_x, self.speed_y)
+        if self.rect.top > resolution[1] or self.rect.bottom < 0 or self.rect.right < 0 or self.rect.left > resolution[0]:
             self.kill()
 
     def rotate(self):
@@ -245,32 +236,30 @@ class Asteroid(pygame.sprite.Sprite):
             self.image = pygame.transform.rotate(self.image_original, self.rot)
             self.rect = self.image.get_rect(center=self.rect.center)
 
-    def get_damage(self):
-        return self.damage
+    def get_info(self):
+        return {
+            "damage": self.damage,
+            "pos": self.rect.center,
+            "speed_x": self.speed_x,
+            "speed_y": self.speed_y,
+            "size": self.size
+        }
 
-    def get_pos(self):
-        return self.rect.center
-
-    def get_speed_x(self):
-        return self.speedx
-
-    def get_speed_y(self):
-        return self.speedy
-
-    def get_size(self):
-        return self.size
 
 
 class Bullet(pygame.sprite.Sprite):
     bullet_loss = 0
-
     def __init__(self, pos):
         super().__init__()
-        self.image = pygame.image.load('bullet.png')
+        self.image = pygame.image.load('plasma_bullet.png')
         self.rect = self.image.get_rect(center=pos)
+        self.rect.x += 25
+        self.rect.y -= 30
+        self.spread = random.randrange(-5,5)
+
 
     def update(self):
-        self.rect.move_ip(0, -40)
+        self.rect.move_ip(self.spread, -60)
         if self.rect.top < 0:
             self.kill()
             Bullet.bullet_loss += 1
@@ -291,14 +280,16 @@ class Bullet(pygame.sprite.Sprite):
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, use_mouse_control=True):
-        self.debug_mode = False
+    def __init__(self, use_mouse_control=False):
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.Surface((50, 50))
-        # self.image.fill(COLOR["Yellow"])
-        self.image = pygame.image.load('player/p1.png')
+        self.debug_mode = False
+        self.images = [pygame.image.load(f'player/p{i}.png') for i in range(1, 5)]
+        self.images = [pygame.transform.rotate(image, 90) for image in self.images]
+        self.images = [pygame.transform.scale(image, (200, 200)) for image in self.images]
+        self.image_index = 0
+        self.image = self.images[self.image_index]
         self.image = pygame.transform.rotate(self.image, 90)
-        self.image = pygame.transform.scale(self.image, (150, 150))
+        self.image = pygame.transform.scale(self.image, (200, 200))
         self.rect = self.image.get_rect()
         self.rect.center = (resolution[0] / 2, resolution[1])
         self.speed = pygame.math.Vector2(0, 0)
@@ -306,6 +297,15 @@ class Player(pygame.sprite.Sprite):
         self.use_mouse_control = use_mouse_control
 
     def update(self):
+        if hp > 85:
+            self.image_index = 0
+        elif hp > 50:
+            self.image_index = 1
+        elif hp > 25:
+            self.image_index = 2
+        else:
+            self.image_index = 3
+        self.image = self.images[self.image_index]
         self.rect.move_ip(self.speed)
         self.move_speed = 10
         if self.use_mouse_control:
@@ -439,7 +439,7 @@ all_sprites.add(player)
 Space_Dust_Sprites()
 Explosion.load_small_exlosions_sprites()
 
-background = pygame.image.load('background.jpg')
+background = pygame.image.load('background_2.jpg')
 background = pygame.transform.scale(background, (resolution[0], 1280))
 background = pygame.transform.rotate(background, 90)
 x = 0
@@ -463,7 +463,7 @@ while running:
         if event.type == pygame.KEYDOWN and event.key == pygame.K_l:
             player.toggle_debug()
 
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE or event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             p_bullet_sound.play()
             b = Bullet(player.rect.center)
             all_sprites.add(b)
@@ -485,20 +485,21 @@ while running:
             e = Asteroid()
             all_sprites.add(e)
             enemies.add(e)
-            Asteroid.enemies_on_screen += 1
+            Asteroid.enemies_count += 1
 
     hit = pygame.sprite.spritecollide(player, enemies, True, pygame.sprite.collide_circle)
     if hit:
-        hp = hp - e.get_damage()
+        hp = hp - e.damage
         explosion_small.play()
         score_count += 1
     bullet_hit = pygame.sprite.groupcollide(bullets, enemies, True, True, pygame.sprite.collide_circle)
     if bullet_hit:
+        #space_dust.draw(DISPLAYSURF)
         explosion_small.play()
         score_count += 1
         score_wave += 1
         hit_count += 1
-        Asteroid.enemies_on_screen -= len(bullet_hit)
+        Asteroid.enemies_count -= len(bullet_hit)
 
         if score_wave >= 10:
             wave.update_wave()
@@ -507,10 +508,12 @@ while running:
             for a in asteroid:
                 explosion = Explosion(a.rect.center)
                 all_sprites.add(explosion)
-                for i in range(1, random.randrange(2,4)):
+                for i in range(1, random.randrange(32,64)):
+                    Space_dust.space_dust_count +=1
                     sd = Space_dust(a.rect.center)
                     all_sprites.add(sd)
                     space_dust.add(sd)
+
 
     if hp <= 0:
         print("Game Over")
@@ -526,17 +529,18 @@ while running:
                       str(Bullet.get_bullet_loss()) +
                       '       Accuracy: ' + str(Bullet.get_accuracy()) + '%', True, (180, 0, 0))
     debug = f2.render('spawn chance: ' + str(wave.get_spawn_chance()) +
-                      '     Enemies: ' + str(Asteroid.get_enemies_on_screen()) +
+                      '     Enemies: ' + str(Asteroid.enemies_count) +
                       '     P_speed: ' + str(stats.get_player_speed()) +
                       '     P_bullet_s: ' + str(stats.get_player_bullet_speed()) +
                       '     P_reload_s: ' + str(stats.get_player_reload_speed()) +
                       '     Wave_time: ' + str(wave.wave_time) +
                       '     FPS: ' + (str(round(clock.get_fps()))) +
                       '     score_wave: ' + (str(score_wave)) +
-                      '     space_dust: ' + str(Space_dust.get_count_spacedust_on_screen()),
+                      '     space_dust: ' + str(Space_dust.space_dust_count),
                       True, (180, 0, 0))
     all_sprites.update()
     # pygame.display.update()
+
     all_sprites.draw(DISPLAYSURF)
 
 
@@ -547,19 +551,16 @@ while running:
     rect_height = 100
     rect_x = 0
     rect_y = 0
-    # Создаем цикл для изменения цвета прямоугольника на каждой итерации
 
     for i in range(rect_width):
-        # Вычисляем текущий цвет градиента
         r = int(start_color[0] + (end_color[0] - start_color[0]) * float(i) / rect_width)
         g = int(start_color[1] + (end_color[1] - start_color[1]) * float(i) / rect_width)
         b = int(start_color[2] + (end_color[2] - start_color[2]) * float(i) / rect_width)
         color = (r, g, b)
 
 
-        # Создаем прямоугольник текущим цветом градиента
         pygame.draw.rect(DISPLAYSURF, color, (rect_x + i, rect_y, 1, rect_height))
-
+        pygame.draw.rect(DISPLAYSURF, color, (rect_x - i, 100, resolution[0], 5))
     #pygame.draw.rect(DISPLAYSURF, (0, 0, 0), (0, 0, resolution[0], 100))
     DISPLAYSURF.blit(text1, (10, 10))
     DISPLAYSURF.blit(text2, (10, 50))
